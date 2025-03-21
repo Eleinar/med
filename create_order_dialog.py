@@ -1,39 +1,58 @@
-from PySide6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QTableWidget, QTableWidgetItem, QPushButton, QComboBox, QLineEdit, QMessageBox, QStackedWidget, QDialog
+from PySide6.QtWidgets import QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QLineEdit, QMessageBox, QDialog
 from PySide6.QtCore import Qt
-from sqlalchemy.orm import Session
 from models import Client, ClientOrder, OrderItem, Product, OrderStatus, ClientType
 from datetime import datetime
 
 class CreateOrderDialog(QDialog):
-    def __init__(self, session: Session, parent=None):
+    def __init__(self, session, parent=None):
         super().__init__(parent)
         self.session = session
         self.setWindowTitle("Создание нового заказа")
-        self.setGeometry(200, 200, 400, 200)
+        self.setGeometry(200, 200, 400, 300)
 
         # Основной layout
         layout = QVBoxLayout()
 
-        # Форма для создания заказа
-        form_layout = QHBoxLayout()
+        # Форма для создания заказа (вертикальное расположение)
+        form_layout = QVBoxLayout()
+
+        # Поле "Клиент"
+        client_layout = QHBoxLayout()
+        client_label = QLabel("Клиент:")
         self.client_combo = QComboBox(self)
         self.update_client_combo()
+        client_layout.addWidget(client_label)
+        client_layout.addWidget(self.client_combo)
+        form_layout.addLayout(client_layout)
+
+        # Поле "Товар"
+        product_layout = QHBoxLayout()
+        product_label = QLabel("Товар:")
         self.product_combo = QComboBox(self)
         self.update_product_combo()
+        product_layout.addWidget(product_label)
+        product_layout.addWidget(self.product_combo)
+        form_layout.addLayout(product_layout)
+
+        # Поле "Количество"
+        quantity_layout = QHBoxLayout()
+        quantity_label = QLabel("Количество:")
         self.quantity_input = QLineEdit(self)
         self.quantity_input.setPlaceholderText("Количество")
-        form_layout.addWidget(QLabel("Клиент:"))
-        form_layout.addWidget(self.client_combo)
-        form_layout.addWidget(QLabel("Товар:"))
-        form_layout.addWidget(self.product_combo)
-        form_layout.addWidget(QLabel("Количество:"))
-        form_layout.addWidget(self.quantity_input)
+        quantity_layout.addWidget(quantity_label)
+        quantity_layout.addWidget(self.quantity_input)
+        form_layout.addLayout(quantity_layout)
+
+        # Добавляем растяжку между полями и кнопкой
+        form_layout.addStretch()
+
         layout.addLayout(form_layout)
 
         # Кнопка создания заказа
         self.create_button = QPushButton("Создать", self)
         self.create_button.clicked.connect(self.create_order)
-        layout.addWidget(self.create_button)
+        self.create_button.setFixedWidth(100)
+        layout.addWidget(self.create_button, alignment=Qt.AlignCenter)
 
         self.setLayout(layout)
 
@@ -42,7 +61,15 @@ class CreateOrderDialog(QDialog):
         self.client_combo.clear()
         clients = self.session.query(Client).filter_by(is_deleted=False).all()
         for client in clients:
-            self.client_combo.addItem(f"{client.id} - {client.email}", client.id)
+            # Определяем, что отображать: название организации или ФИО
+            if client.client_type == ClientType.legal_entity and client.legal_entity_client:
+                client_display = client.legal_entity_client.name
+            elif client.client_type == ClientType.individual and client.individual_client:
+                client_display = f"{client.individual_client.last_name} {client.individual_client.first_name}" + \
+                                 (f" {client.individual_client.middle_name}" if client.individual_client.middle_name else "")
+            else:
+                client_display = "Неизвестный клиент"
+            self.client_combo.addItem(f"{client.id} - {client_display}", client.id)
 
     def update_product_combo(self):
         """Обновляет выпадающий список товаров."""
@@ -95,7 +122,7 @@ class CreateOrderDialog(QDialog):
 
             self.session.commit()
             QMessageBox.information(self, "Успех", "Заказ успешно создан")
-            self.accept()  # Закрываем диалог
+            self.accept()
 
         except ValueError:
             QMessageBox.warning(self, "Ошибка", "Количество должно быть числом")

@@ -6,15 +6,14 @@ from user_window import UserWindow
 class LoginWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.session = create_connection()
-        self.setWindowTitle("Авторизация")
+        self.setWindowTitle("Вход в систему")
         self.setGeometry(100, 100, 300, 200)
 
         # Центральный виджет и layout
         widget = QWidget()
         layout = QVBoxLayout()
 
-        # Поля ввода
+        # Поля для ввода
         self.username_input = QLineEdit(self)
         self.username_input.setPlaceholderText("Имя пользователя")
         self.password_input = QLineEdit(self)
@@ -34,37 +33,45 @@ class LoginWindow(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
+
+
     def login(self):
-        username = self.username_input.text()
-        password = self.password_input.text()
+        username = self.username_input.text().strip()
+        password = self.password_input.text().strip()
 
         if not username or not password:
             QMessageBox.warning(self, "Ошибка", "Введите имя пользователя и пароль")
             return
 
-        # Поиск пользователя
-        user = self.session.query(User).filter_by(username=username).first()
+        # Проверка пользователя в базе
+        session = create_connection()
+        user = session.query(User).filter_by(username=username).first()
+
         if user and user.check_password(password):
-            # Проверка роли
-            user_role = self.session.query(UserRole).filter_by(user_id=user.id).first()
-            if user_role:
-                role = self.session.query(Role).filter_by(id=user_role.role_id).first()
-                if role:
-                    if role.name == "admin":
-                        # Открытие интерфейса администратора
-                        self.admin_window = AdminWindow(self.session)
-                        self.admin_window.show()
-                        self.hide()
-                    elif role.name == "user":
-                        # Открытие интерфейса обычного пользователя
-                        self.user_window = UserWindow(self.session)
-                        self.user_window.show()
-                        self.hide()
-                    else:
-                        QMessageBox.warning(self, "Ошибка", f"Роль '{role.name}' не поддерживается")
-                else:
-                    QMessageBox.warning(self, "Ошибка", "Роль пользователя не определена")
+            # Получаем роль пользователя
+            user_role = session.query(UserRole).filter_by(user_id=user.id).first()
+            role = session.query(Role).filter_by(id=user_role.role_id).first() if user_role else None
+            role_name = role.name if role else "Basic User"
+
+            # Приводим имя роли к значению, используемому в коде
+            role_mapping = {
+                "Basic User": "basic",
+                "Administrator": "admin",
+                "Sales Manager": "sales_manager",
+                "Worker": "worker",
+                "Accountant": "accountant",
+                "Director": "director"
+            }
+            role_value = role_mapping.get(role_name, "basic")
+
+            # В зависимости от роли открываем соответствующий интерфейс
+            if role_value == "admin":
+                self.admin_window = AdminWindow(session, user, role_value)
+                self.admin_window.show()
             else:
-                QMessageBox.warning(self, "Ошибка", "Роль пользователя не определена")
+                self.user_window = UserWindow(session, user, role_value)
+                self.user_window.show()
+            self.close()
         else:
-            QMessageBox.warning(self, "Ошибка", "Неверное имя пользователя или пароль")
+            QMessageBox.critical(self, "Ошибка", "Неверное имя пользователя или пароль")
+            session.close()

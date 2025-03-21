@@ -1,11 +1,10 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit, QMessageBox, QStackedWidget, QDialog
-from PySide6.QtCore import Qt
-from sqlalchemy.orm import Session
-from models import Client, ClientType, IndividualClient, LegalEntityClient
+
+from models import Client, ClientType
 
 
 class EditClientDialog(QDialog):
-    def __init__(self, session: Session, client: Client, parent=None):
+    def __init__(self, session, client: Client, parent=None):
         super().__init__(parent)
         self.session = session
         self.client = client

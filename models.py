@@ -1,14 +1,21 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Float, Date, Enum, ForeignKey
+# models.py
+from sqlalchemy import Column, Integer, String, Boolean, Float, Date, Enum, ForeignKey, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship, sessionmaker
 import enum
-from sqlalchemy.exc import SQLAlchemyError
 import bcrypt
 
 # Определение базового класса для моделей
 Base = declarative_base()
 
 # Определение перечислений (enums)
+class UserRole(enum.Enum):
+    admin = "admin"  # Администратор
+    sales_manager = "sales_manager"  # Менеджер по продажам
+    production_worker = "worker"  # Производственный сотрудник
+    accountant = "accountant"  # Бухгалтер
+    director = "director"  # Руководитель
+
 class ClientType(enum.Enum):
     individual = "Физлицо"
     legal_entity = "Юрлицо"
@@ -31,10 +38,10 @@ class Role(Base):
     name = Column(String(20), nullable=False)
     user_roles = relationship("UserRole", back_populates="role")
 
-# Модель для таблицы User (убрали quantity и price)
+# Модель для таблицы User
 class User(Base):
     __tablename__ = "User"
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     username = Column(String(50), nullable=False, unique=True)
     password_hash = Column(String(255), nullable=False)
     user_roles = relationship("UserRole", back_populates="user")
@@ -128,7 +135,7 @@ class Payment(Base):
     payment_date = Column(Date)
     payment_method = Column(Enum(PaymentMethod), nullable=False)
     order = relationship("ClientOrder", back_populates="payment")
-
+    
 def create_connection():
     engine = create_engine("postgresql://admin:root@localhost:5432/med", echo = True) # Создаем объект Engine для подключения к базе данных
     Base.metadata.create_all(engine) # Создаем таблицу users в базе данных, если она еще не существует

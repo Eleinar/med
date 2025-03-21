@@ -1,9 +1,8 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QComboBox, QLineEdit, QMessageBox, QStackedWidget, QDialog
-from sqlalchemy.orm import Session
-from models import Client, ClientType, IndividualClient, LegalEntityClient
 
+from models import Client, ClientType, IndividualClient, LegalEntityClient
 class CreateClientDialog(QDialog):
-    def __init__(self, session: Session, parent=None):
+    def __init__(self, session, parent=None):
         super().__init__(parent)
         self.session = session
         self.setWindowTitle("Создание нового клиента")
@@ -85,7 +84,7 @@ class CreateClientDialog(QDialog):
         layout.addWidget(self.create_button)
 
         self.setLayout(layout)
-        self.update_form()  # Инициализация формы
+        self.update_form()
 
     def update_form(self):
         """Обновляет форму в зависимости от выбранного типа клиента."""
@@ -113,7 +112,7 @@ class CreateClientDialog(QDialog):
             # Создание клиента
             new_client = Client(client_type=client_type, phone=phone, email=email, is_deleted=False)
             self.session.add(new_client)
-            self.session.flush()  # Получаем ID нового клиента
+            self.session.flush()
 
             # Создание записи в зависимости от типа
             if client_type == ClientType.individual:
@@ -149,7 +148,7 @@ class CreateClientDialog(QDialog):
 
             self.session.commit()
             QMessageBox.information(self, "Успех", "Клиент успешно создан")
-            self.accept()  # Закрываем диалог
+            self.accept()
 
         except Exception as e:
             self.session.rollback()
